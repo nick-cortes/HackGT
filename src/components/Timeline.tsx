@@ -21,19 +21,64 @@ export type Publication = {
 
 interface TimelineProps {
   publications: Publication[];
+  patientId?: string;
 }
 
 // --- CONFIGURATION CONSTANTS ---
 const MIN_SPACING_PX = 400;   // The horizontal space between each event dot
 const ARROW_GAP_PX = 200;      // The space between the last dot and the arrow
 
-export default function Timeline({ publications }: TimelineProps) {
+export default function Timeline({ publications, patientId }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   
   const [startPadding, setStartPadding] = useState(300);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null);
-  const [centeredPublication, setCenteredPublication] = useState<Publication | null>(null); 
+  const [centeredPublication, setCenteredPublication] = useState<Publication | null>(null);
+  const [generatedSummary, setGeneratedSummary] = useState<{
+    impactScore: number;
+    summary: string;
+    relevanceSummary: string;
+  } | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  const handleAbstractClick = async (pub: Publication) => {
+    if (!patientId) {
+      alert('Patient ID is required to generate summaries');
+      return;
+    }
+
+    setSelectedPublication(pub);
+    setLoadingSummary(true);
+    setGeneratedSummary(null);
+
+    try {
+      const response = await fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          publicationId: pub.id,
+          patientId: patientId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to generate summary');
+      }
+
+      const summary = await response.json();
+      setGeneratedSummary(summary);
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate summary. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setLoadingSummary(false);
+    }
+  }; 
   
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -229,17 +274,14 @@ export default function Timeline({ publications }: TimelineProps) {
                 zIndex: isCentered ? 50 : 10
               }}
             >
-              <a
-                href={pub.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`h-full p-4 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
-                  isCentered 
-                    ? 'bg-indigo-900/95 border-indigo-500 shadow-indigo-900/50 cursor-pointer hover:bg-indigo-800/95' 
-                    : 'bg-gray-800/90 border-gray-600 cursor-default'
-                }`}
-                onClick={(e) => !isCentered && e.preventDefault()}
-              >
+                <div
+                  className={`h-full p-4 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
+                    isCentered 
+                      ? 'bg-indigo-900/95 border-indigo-500 shadow-indigo-900/50 cursor-pointer hover:bg-indigo-800/95' 
+                      : 'bg-gray-800/90 border-gray-600 cursor-default'
+                  }`}
+                  onClick={() => isCentered && handleAbstractClick(pub)}
+                >
                 <p className={`text-xs leading-relaxed transition-all duration-300 flex-1 overflow-hidden ${
                   isCentered 
                     ? 'text-gray-200 line-clamp-8' 
@@ -247,7 +289,7 @@ export default function Timeline({ publications }: TimelineProps) {
                 }`}>
                   {pub.abstract ? decodeHtmlEntities(pub.abstract) : 'Abstract not available'}
                 </p>
-              </a>
+                </div>
             </div>
           );
         })}
@@ -330,6 +372,111 @@ export default function Timeline({ publications }: TimelineProps) {
           );
         })}
       </div>
+
+      {/* Summary Modal */}
+      {selectedPublication && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setSelectedPublication(null);
+            setGeneratedSummary(null);
+          }}
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{ overflow: 'hidden' }}
+        >
+          <div 
+            className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-700 flex justify-between items-start">
+              <div className="flex-1 pr-4">
+                <h2 className="text-xl font-semibold text-indigo-200 leading-tight mb-2">
+                  {selectedPublication.title}
+                </h2>
+                <a 
+                  href={selectedPublication.pdfUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-purple-400 hover:text-purple-300 text-sm underline"
+                >
+                  View Full Study →
+                </a>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedPublication(null);
+                  setGeneratedSummary(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-purple-500 hover:scrollbar-thumb-pink-500">
+              {loadingSummary ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                  <span className="ml-3 text-gray-300">Generating AI summary...</span>
+                </div>
+              ) : generatedSummary ? (
+                <div className="space-y-6">
+                  {/* Impact Score */}
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-3">Impact Score</h3>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <svg
+                            key={star}
+                            className={`w-6 h-6 ${
+                              star <= generatedSummary.impactScore
+                                ? 'text-yellow-400'
+                                : 'text-gray-600'
+                            }`}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
+                      <span className="text-gray-300 text-lg font-medium">
+                        {generatedSummary.impactScore}/5
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* AI Summary */}
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-3">AI Summary</h3>
+                    <p className="text-gray-200 leading-relaxed">
+                      {generatedSummary.summary}
+                    </p>
+                  </div>
+
+                  {/* Patient Relevance */}
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-3">Patient Relevance</h3>
+                    <p className="text-gray-200 leading-relaxed">
+                      {generatedSummary.relevanceSummary}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">Click on an abstract to generate AI insights</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
