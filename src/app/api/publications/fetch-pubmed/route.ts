@@ -19,7 +19,7 @@ async function fetchPubMedArticles(drugName: string, publishedAfter: Date, limit
     const dateStr = publishedAfter.toISOString().split('T')[0].replace(/-/g, '/');
     
     // Search query for PubMed
-    const searchQuery = `(${drugName}[Title] OR ${drugName}[Mesh]) AND ("${dateStr}"[Publication Date] : "3000"[Publication Date]) AND "free full text"[Filter]`;
+    const searchQuery = `(${drugName}[Title] OR ${drugName}[MeSH Terms]) AND ("${dateStr}"[Publication Date] : "3000"[Publication Date]) AND "free full text"[Filter]`;
     const encodedQuery = encodeURIComponent(searchQuery);
     
     console.log('PubMed search query:', searchQuery);
