@@ -31,8 +31,7 @@ export default function Timeline({ publications }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   
   const [startPadding, setStartPadding] = useState(300);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null); 
+  const [scrollPosition, setScrollPosition] = useState(0); 
   
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -195,21 +194,17 @@ export default function Timeline({ publications }: TimelineProps) {
                 zIndex: isCentered ? 50 : 10
               }}
             >
-              <div 
+              <a
+                href={pub.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`h-full p-4 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
                   isCentered 
                     ? 'bg-indigo-900/95 border-indigo-500 shadow-indigo-900/50 cursor-pointer hover:bg-indigo-800/95' 
-                    : 'bg-gray-800/90 border-gray-600'
+                    : 'bg-gray-800/90 border-gray-600 cursor-default'
                 }`}
-                onClick={() => isCentered && setSelectedPublication(pub)}
+                onClick={(e) => !isCentered && e.preventDefault()}
               >
-                <h3 className={`font-semibold mb-3 transition-all duration-300 ${
-                  isCentered 
-                    ? 'text-indigo-200 text-sm' 
-                    : 'text-gray-300 text-xs truncate'
-                }`}>
-                  {pub.title}
-                </h3>
                 <p className={`text-xs leading-relaxed transition-all duration-300 flex-1 overflow-hidden ${
                   isCentered 
                     ? 'text-gray-200' 
@@ -217,7 +212,7 @@ export default function Timeline({ publications }: TimelineProps) {
                 }`}>
                   {pub.abstract ? decodeHtmlEntities(pub.abstract) : 'Abstract not available'}
                 </p>
-              </div>
+              </a>
             </div>
           );
         })}
@@ -290,51 +285,6 @@ export default function Timeline({ publications }: TimelineProps) {
           </div>
         ))}
       </div>
-
-      {/* Abstract Modal */}
-      {selectedPublication && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedPublication(null)}
-          onWheel={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          style={{ overflow: 'hidden' }}
-        >
-          <div 
-            className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-gray-700 flex justify-between items-start">
-              <h2 className="text-xl font-semibold text-indigo-200 leading-tight pr-4">
-                {selectedPublication.title}
-              </h2>
-              <button
-                onClick={() => setSelectedPublication(null)}
-                className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div 
-              className="p-6 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-purple-500 hover:scrollbar-thumb-pink-500"
-              onWheel={(e) => e.stopPropagation()}
-            >
-              <p className="text-gray-200 leading-relaxed text-base">
-                {selectedPublication.abstract ? decodeHtmlEntities(selectedPublication.abstract) : 'Abstract not available'}
-              </p>
-            </div>
-            <div className="p-4 border-t border-gray-700 bg-gray-800/50 text-center">
-              <p className="text-sm text-gray-400">
-                Published: {selectedPublication.date}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
