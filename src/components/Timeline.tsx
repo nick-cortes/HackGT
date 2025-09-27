@@ -439,7 +439,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
                 isPrescription ? 'cursor-default' : 'cursor-pointer'
               }`}
               style={{ left: `${positionMap.get(pub.id)}px`, top: "50%" }}
-              onClick={isPrescription ? undefined : () => window.open(pub.pdfUrl, "_blank")}
+              onClick={isPrescription ? undefined : () => handleAbstractClick(pub)}
             >
               <div
                 className={`rounded-full mb-2 -translate-y-1/2 border-3 transition-all duration-300 ease-in-out ${
