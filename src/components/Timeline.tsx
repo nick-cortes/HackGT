@@ -24,7 +24,7 @@ interface TimelineProps {
 }
 
 // --- CONFIGURATION CONSTANTS ---
-const MIN_SPACING_PX = 250;   // The horizontal space between each event dot
+const MIN_SPACING_PX = 400;   // The horizontal space between each event dot
 const ARROW_GAP_PX = 200;      // The space between the last dot and the arrow
 
 export default function Timeline({ publications }: TimelineProps) {
@@ -32,7 +32,8 @@ export default function Timeline({ publications }: TimelineProps) {
   
   const [startPadding, setStartPadding] = useState(300);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null); 
+  const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null);
+  const [centeredPublication, setCenteredPublication] = useState<Publication | null>(null); 
   
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -105,6 +106,24 @@ export default function Timeline({ publications }: TimelineProps) {
     
     const handleScroll = () => {
       setScrollPosition(container.scrollLeft);
+      
+      // Determine which publication is currently centered
+      const centerX = container.scrollLeft + startPadding;
+      let closestDistance = Infinity;
+      let closestPublication = null;
+      
+      sortedPublications.forEach((pub) => {
+        const pubPosition = positionMap.get(pub.id);
+        if (pubPosition !== undefined) {
+          const distance = Math.abs(centerX - pubPosition);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestPublication = pub;
+          }
+        }
+      });
+      
+      setCenteredPublication(closestPublication);
     };
 
     const snapToClosestPoint = () => {
@@ -139,8 +158,23 @@ export default function Timeline({ publications }: TimelineProps) {
     container.addEventListener("wheel", handleWheel, { passive: false });
     container.addEventListener("scroll", handleScroll);
     
-    // Set initial scroll position
-    setScrollPosition(container.scrollLeft);
+    // Set initial centered publication
+    const initialCenterX = container.scrollLeft + startPadding;
+    let initialClosestDistance = Infinity;
+    let initialClosestPublication = null;
+    
+    sortedPublications.forEach((pub) => {
+      const pubPosition = positionMap.get(pub.id);
+      if (pubPosition !== undefined) {
+        const distance = Math.abs(initialCenterX - pubPosition);
+        if (distance < initialClosestDistance) {
+          initialClosestDistance = distance;
+          initialClosestPublication = pub;
+        }
+      }
+    });
+    
+    setCenteredPublication(initialClosestPublication);
     
     return () => {
       container.removeEventListener("wheel", handleWheel);
@@ -168,7 +202,7 @@ export default function Timeline({ publications }: TimelineProps) {
       }}
     >
       {/* Abstract Carousel - positioned above timeline */}
-      <div className="absolute top-1/2 -translate-y-60 left-0 right-0 h-48 overflow-visible z-30">
+      <div className="absolute top-1/2 -translate-y-40 left-0 right-0 h-32 overflow-visible z-30">
         {sortedPublications.map((pub) => {
           // Only render cards for publications with abstracts and not prescription markers
           if (!pub.abstract || pub.isPrescriptionMarker) {
@@ -190,8 +224,8 @@ export default function Timeline({ publications }: TimelineProps) {
                 left: `${pubPosition}px`,
                 transform: `scale(${scale})`,
                 opacity: opacity,
-                width: isCentered ? '320px' : '280px',
-                height: isCentered ? '280px' : '120px',
+                width: isCentered ? '300px' : '250px',
+                height: isCentered ? '180px' : '100px',
                 zIndex: isCentered ? 50 : 10
               }}
             >
@@ -212,7 +246,7 @@ export default function Timeline({ publications }: TimelineProps) {
                 </h3>
                 <p className={`text-xs leading-relaxed transition-all duration-300 flex-1 overflow-hidden ${
                   isCentered 
-                    ? 'text-gray-200' 
+                    ? 'text-gray-200 line-clamp-8' 
                     : 'text-gray-400 line-clamp-2'
                 }`}>
                   {pub.abstract ? decodeHtmlEntities(pub.abstract) : 'Abstract not available'}
@@ -222,6 +256,7 @@ export default function Timeline({ publications }: TimelineProps) {
           );
         })}
       </div>
+      
       <div
         className="relative h-full flex items-center"
         style={{ width: `${totalScrollableWidth}px` }}
@@ -252,43 +287,52 @@ export default function Timeline({ publications }: TimelineProps) {
           </svg>
         </div>
         
-        {sortedPublications.map((pub) => (
-          <div
-            key={pub.id}
-            className={`absolute flex flex-col items-center -translate-x-1/2 group z-20 ${
-              pub.isPrescriptionMarker ? 'cursor-default' : 'cursor-pointer'
-            }`}
-            style={{ left: `${positionMap.get(pub.id)}px`, top: "50%" }}
-            onClick={pub.isPrescriptionMarker ? undefined : () => window.open(pub.pdfUrl, "_blank")}
-          >
+        {sortedPublications.map((pub) => {
+          const isCentered = centeredPublication?.id === pub.id;
+          const isPrescription = pub.isPrescriptionMarker;
+          
+          return (
             <div
-              className={`w-6 h-6 rounded-full mb-2 -translate-y-1/2 border-3 transition-all duration-300 ease-in-out ${
-                pub.isPrescriptionMarker
-                  ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.7)] group-hover:scale-125 group-hover:border-purple-300 group-hover:shadow-[0_0_12px_rgba(192,132,252,0.9)]'
-                  : 'bg-white border-purple-500 shadow-[0_0_8px_rgba(147,51,234,0.7)] group-hover:scale-150 group-hover:border-pink-400 group-hover:shadow-[0_0_12px_rgba(244,114,182,0.9)]'
+              key={pub.id}
+              className={`absolute flex flex-col items-center -translate-x-1/2 group z-20 ${
+                isPrescription ? 'cursor-default' : 'cursor-pointer'
               }`}
-            />
-            <span className="text-sm text-gray-400 whitespace-nowrap font-medium">
-              {new Date(pub.date).toLocaleDateString()}
-            </span>
-            <span className={`text-base mt-2 whitespace-nowrap ${
-              pub.isPrescriptionMarker ? 'text-indigo-300 font-semibold' : 'text-gray-300'
-            }`}>
-              {pub.title.startsWith("Started") && pub.title}
-            </span>
-            <div 
-              className={`absolute top-full mt-4 w-72 p-4 text-white rounded-lg shadow-xl border z-30
-                         opacity-0 scale-95 invisible group-hover:visible group-hover:opacity-100 group-hover:scale-100
-                         transition-all duration-300 ease-in-out pointer-events-none ${
-                pub.isPrescriptionMarker 
-                  ? 'bg-indigo-900 border-indigo-700' 
-                  : 'bg-gray-800 border-gray-700'
-              }`}
+              style={{ left: `${positionMap.get(pub.id)}px`, top: "50%" }}
+              onClick={isPrescription ? undefined : () => window.open(pub.pdfUrl, "_blank")}
             >
-              <p className="text-sm text-center text-gray-300 leading-relaxed">{pub.summary}</p>
+              <div
+                className={`rounded-full mb-2 -translate-y-1/2 border-3 transition-all duration-300 ease-in-out ${
+                  isCentered 
+                    ? 'w-8 h-8' 
+                    : 'w-6 h-6'
+                } ${
+                  isPrescription
+                    ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.7)] group-hover:scale-125 group-hover:border-purple-300 group-hover:shadow-[0_0_12px_rgba(192,132,252,0.9)]'
+                    : isCentered
+                    ? 'bg-white border-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.9)] scale-125'
+                    : 'bg-white border-purple-500 shadow-[0_0_8px_rgba(147,51,234,0.7)] group-hover:scale-150 group-hover:border-pink-400 group-hover:shadow-[0_0_12px_rgba(244,114,182,0.9)]'
+                }`}
+              />
+              <span className="text-sm text-gray-400 whitespace-nowrap font-medium">
+                {new Date(pub.date).toLocaleDateString()}
+              </span>
+              <span className={`text-base mt-2 whitespace-nowrap ${
+                isPrescription ? 'text-indigo-300 font-semibold' : 'text-gray-300'
+              }`}>
+                {isPrescription && pub.title.startsWith("Started") && pub.title}
+              </span>
+              
+              {/* Show simple title for centered publication */}
+              {isCentered && !isPrescription && (
+                <div className="absolute top-full mt-4 w-64 p-3 text-white rounded-lg shadow-xl border z-30 bg-gray-800 border-gray-700">
+                  <h3 className="text-sm font-semibold text-purple-300 text-center">
+                    Publication about {pub.title}
+                  </h3>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Abstract Modal */}
