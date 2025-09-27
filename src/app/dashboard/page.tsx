@@ -46,6 +46,38 @@ export default function Dashboard() {
     fetchPatients();
   }, []);
 
+  // Fetch publications when patient is selected
+  useEffect(() => {
+    const fetchPublications = async () => {
+      if (selectedPatientId) {
+        try {
+          console.log('Fetching publications for patient:', selectedPatientId);
+          const response = await fetch('/api/publications/fetch-pubmed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              patientId: selectedPatientId,
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.totalNewPublications > 0) {
+              console.log(`Found ${result.totalNewPublications} new publications!`);
+              // Optionally show a notification or refresh data
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching publications:', error);
+        }
+      }
+    };
+
+    fetchPublications();
+  }, [selectedPatientId]);
+
   // Get selected patient data
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
   
