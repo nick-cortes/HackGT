@@ -36,6 +36,7 @@ model Publication {
     title         String
     url           String
     publishedDate DateTime
+    summary       String
     drugID        String
 
     drug Drug @relation(fields: [drugID], references: [id], onDelete: Cascade)
