@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,9 +8,8 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    const limit = searchParams.get('limit');
 
-    console.log('Search params:', { search, limit });
+    console.log('Search params:', { search });
 
     // Build where clause for search functionality
     const whereClause = search
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     console.log('Where clause:', whereClause);
 
     // Build query options
-    const queryOptions: any = {
+    const queryOptions = {
       where: whereClause,
       include: {
         prescriptions: {
@@ -39,12 +39,7 @@ export async function GET(request: NextRequest) {
       orderBy: {
         name: 'asc',
       },
-    };
-
-    // Add limit if specified
-    if (limit) {
-      queryOptions.take = parseInt(limit);
-    }
+    } satisfies Prisma.PatientFindManyArgs;
 
     console.log('Query options:', JSON.stringify(queryOptions, null, 2));
 
