@@ -135,11 +135,12 @@ export default function Dashboard() {
           })
           .map(pub => ({
             id: pub.id,
-            title: pub.drug.name,
+            title: pub.title,
             date: pub.publishedDate.split('T')[0], // Convert ISO date to YYYY-MM-DD
             pdfUrl: pub.url,
             summary: `Publication about ${pub.drug.name}`,
-            abstract: pub.abstract
+            abstract: pub.abstract,
+            drug: pub.drug
           }));
 
         // Add prescription start markers
@@ -150,7 +151,8 @@ export default function Dashboard() {
           pdfUrl: '#',
           summary: `Patient started taking ${prescription.drug.name} on ${prescription.startDate.split('T')[0]}`,
           isPrescriptionMarker: true,
-          abstract: ''
+          abstract: '',
+          drug: prescription.drug
         }));
 
         // Combine publications and prescription markers

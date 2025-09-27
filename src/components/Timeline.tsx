@@ -17,6 +17,10 @@ export type Publication = {
   summary: string;
   isPrescriptionMarker?: boolean;
   abstract: string;
+  drug: {
+    id: string;
+    name: string;
+  };
 };
 
 interface TimelineProps {
@@ -122,9 +126,70 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
   const totalScrollableWidth = lastDotPosition + startPadding;
 
 
+  // Effect to handle modal state and disable scrolling
+  useEffect(() => {
+    const preventScroll = (e: Event) => {
+      // Allow scrolling within modal content
+      const target = e.target as Element;
+      if (target && target.closest('.modal-content')) {
+        return; // Allow scrolling within modal content
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const container = containerRef.current;
+
+    if (selectedPublication) {
+      // Disable body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      // Hide scrollbar on timeline container
+      if (container) {
+        container.style.overflow = 'hidden';
+      }
+      // Add global event listeners to prevent scrolling outside modal
+      document.addEventListener('wheel', preventScroll, { passive: false });
+      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.addEventListener('keydown', (e) => {
+        // Allow scrolling within modal content
+        const target = e.target as Element;
+        if (target && target.closest('.modal-content')) {
+          return; // Allow keyboard navigation within modal
+        }
+        // Prevent arrow keys, page up/down, home, end
+        if ([32, 33, 34, 35, 36, 37, 38, 39, 40].includes(e.keyCode)) {
+          e.preventDefault();
+        }
+      });
+    } else {
+      // Re-enable body scroll when modal is closed
+      document.body.style.overflow = 'auto';
+      // Re-enable scrollbar on timeline container
+      if (container) {
+        container.style.overflow = 'auto';
+      }
+      // Remove global event listeners
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = 'auto';
+      if (container) {
+        container.style.overflow = 'auto';
+      }
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
+    };
+  }, [selectedPublication]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Don't set up scroll handlers if modal is open
+    if (selectedPublication) return;
 
     // Set the initial scroll to center the last dot. Because of our new width
     // calculation, this is also the maximum scroll position.
@@ -226,7 +291,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
       container.removeEventListener("scroll", handleScroll);
       clearTimeout(scrollTimeout);
     };
-  }, [lastDotPosition, startPadding, sortedPublications, positionMap]);
+  }, [lastDotPosition, startPadding, sortedPublications, positionMap, selectedPublication]);
 
   if (!publications || publications.length === 0) {
     return (
@@ -239,18 +304,20 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-x-auto overflow-y-hidden py-12 scrollbar-hide bg-gray-800 rounded-lg border border-gray-700 relative"
+      className={`w-full h-full overflow-x-auto overflow-y-hidden py-12 bg-gray-800 rounded-lg border border-gray-700 relative ${
+        selectedPublication ? 'scrollbar-hide' : 'scrollbar-hide'
+      }`}
       style={{ 
         minHeight: '500px',
         backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
         backgroundSize: '20px 20px'
       }}
     >
-      {/* Abstract Carousel - positioned above timeline */}
+      {/* Title Carousel - positioned above timeline */}
       <div className="absolute top-1/2 -translate-y-40 left-0 right-0 h-32 overflow-visible z-30">
         {sortedPublications.map((pub) => {
-          // Only render cards for publications with abstracts and not prescription markers
-          if (!pub.abstract || pub.isPrescriptionMarker) {
+          // Only render cards for publications with titles and not prescription markers
+          if (!pub.title || pub.isPrescriptionMarker) {
             return null;
           }
           
@@ -287,7 +354,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
                     ? 'text-gray-200 line-clamp-8' 
                     : 'text-gray-400 line-clamp-2'
                 }`}>
-                  {pub.abstract ? decodeHtmlEntities(pub.abstract) : 'Abstract not available'}
+                  {pub.title ? decodeHtmlEntities(pub.title) : 'Title not available'}
                 </p>
                 </div>
             </div>
@@ -364,7 +431,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
               {isCentered && !isPrescription && (
                 <div className="absolute top-full mt-4 w-64 p-3 text-white rounded-lg shadow-xl border z-30 bg-gray-800 border-gray-700">
                   <h3 className="text-sm font-semibold text-purple-300 text-center">
-                    {pub.title}
+                    {pub.drug.name}
                   </h3>
                 </div>
               )}
@@ -381,15 +448,13 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
             setSelectedPublication(null);
             setGeneratedSummary(null);
           }}
-          onWheel={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
           style={{ overflow: 'hidden' }}
         >
           <div 
             className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-700 flex justify-between items-start">
               <div className="flex-1 pr-4">
@@ -418,7 +483,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-purple-500 hover:scrollbar-thumb-pink-500">
+            <div className="p-6 overflow-y-auto max-h-[60vh] scrollbar-hide modal-content">
               {loadingSummary ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
@@ -470,7 +535,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-gray-400">Click on an abstract to generate AI insights</p>
+                  <p className="text-gray-400">Click on a publication to generate AI insights</p>
                 </div>
               )}
             </div>
