@@ -350,7 +350,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
       }}
     >
       {/* Title Carousel - positioned above timeline */}
-      <div className="absolute top-1/2 -translate-y-40 left-0 right-0 h-32 overflow-visible z-30">
+      <div className="absolute top-1/2 -translate-y-48 left-0 right-0 h-40 overflow-visible z-30">
         {sortedPublications.map((pub) => {
           // Only render cards for publications with titles and not prescription markers
           if (!pub.title || pub.isPrescriptionMarker) {
@@ -372,23 +372,23 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
                 left: `${pubPosition}px`,
                 transform: `scale(${scale})`,
                 opacity: opacity,
-                width: isCentered ? '300px' : '250px',
-                height: isCentered ? '180px' : '100px',
+                width: isCentered ? '380px' : '320px',
+                height: isCentered ? '220px' : '140px',
                 zIndex: isCentered ? 50 : 10
               }}
             >
                 <div
-                  className={`h-full p-4 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
+                  className={`h-full p-5 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
                     isCentered 
                       ? 'bg-indigo-900/95 border-indigo-500 shadow-indigo-900/50 cursor-pointer hover:bg-indigo-800/95' 
                       : 'bg-gray-800/90 border-gray-600 cursor-default'
                   }`}
                   onClick={() => isCentered && handleAbstractClick(pub)}
                 >
-                <p className={`text-xs leading-relaxed transition-all duration-300 flex-1 overflow-hidden ${
+                <p className={`text-base leading-relaxed transition-all duration-300 flex-1 overflow-hidden font-medium ${
                   isCentered 
                     ? 'text-gray-200 line-clamp-8' 
-                    : 'text-gray-400 line-clamp-2'
+                    : 'text-gray-400 line-clamp-3'
                 }`}>
                   {pub.title ? decodeHtmlEntities(pub.title) : 'Title not available'}
                 </p>
