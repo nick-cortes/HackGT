@@ -38,6 +38,7 @@ model Publication {
     publishedDate DateTime
     summary       String
     drugID        String
+    abstract      String
 
     drug Drug @relation(fields: [drugID], references: [id], onDelete: Cascade)
 }

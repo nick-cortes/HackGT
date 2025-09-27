@@ -28,6 +28,7 @@ interface ApiPublication {
   url: string;
   publishedDate: string;
   drugID: string;
+  abstract: string;
   drug: {
     id:string;
     name: string;
@@ -137,7 +138,8 @@ export default function Dashboard() {
             title: pub.drug.name,
             date: pub.publishedDate.split('T')[0], // Convert ISO date to YYYY-MM-DD
             pdfUrl: pub.url,
-            summary: `Publication about ${pub.drug.name}`
+            summary: `Publication about ${pub.drug.name}`,
+            abstract: pub.abstract
           }));
 
         // Add prescription start markers
@@ -147,7 +149,8 @@ export default function Dashboard() {
           date: prescription.startDate,
           pdfUrl: '#',
           summary: `Patient started taking ${prescription.drug.name} on ${prescription.startDate.split('T')[0]}`,
-          isPrescriptionMarker: true
+          isPrescriptionMarker: true,
+          abstract: ''
         }));
 
         // Combine publications and prescription markers
@@ -292,7 +295,7 @@ export default function Dashboard() {
                             <div className={`text-xs mt-1 ${
                               selectedPatientId === patient.id ? 'text-indigo-200' : 'text-gray-400'
                             }`}>
-                              {patient.prescriptions.length} Active Prescriptions
+                              {patient.prescriptions.length} Active Prescription{patient.prescriptions.length > 1 ? 's' : ''}
                             </div>
                           </div>
                         </div>
@@ -332,7 +335,7 @@ export default function Dashboard() {
                               </svg>
                             </div>
                             <div>
-                              <span className="font-medium">All Medications</span>
+                              <span className="font-medium">All Medication</span>
                               <div className={`text-xs mt-1 ${
                                 selectedDrugId === '' ? 'text-purple-200' : 'text-gray-400'
                               }`}>
@@ -403,7 +406,7 @@ export default function Dashboard() {
                     <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
-                    <span>Showing publications for all medications <span className="text-indigo-300 font-semibold">({availableDrugs.length} total)</span></span>
+                    <span>Showing publications for all medication <span className="text-indigo-300 font-semibold">({availableDrugs.length} total)</span></span>
                   </p>
                 </div>
               )}

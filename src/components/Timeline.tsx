@@ -2,6 +2,13 @@
 
 import { useRef, useEffect, useMemo, useState, useLayoutEffect } from "react";
 
+// Function to decode HTML entities
+const decodeHtmlEntities = (text: string): string => {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+};
+
 export type Publication = {
   id: number | string;
   title: string;
@@ -9,6 +16,7 @@ export type Publication = {
   pdfUrl: string;
   summary: string;
   isPrescriptionMarker?: boolean;
+  abstract: string;
 };
 
 interface TimelineProps {
@@ -22,7 +30,9 @@ const ARROW_GAP_PX = 200;      // The space between the last dot and the arrow
 export default function Timeline({ publications }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   
-  const [startPadding, setStartPadding] = useState(300); 
+  const [startPadding, setStartPadding] = useState(300);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null); 
   
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -65,6 +75,7 @@ export default function Timeline({ publications }: TimelineProps) {
   // perfectly with the center of the screen, leaving no extra space to scroll into.
   const totalScrollableWidth = lastDotPosition + startPadding;
 
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -73,14 +84,70 @@ export default function Timeline({ publications }: TimelineProps) {
     // calculation, this is also the maximum scroll position.
     container.scrollLeft = lastDotPosition - startPadding; 
     
+    let scrollTimeout: NodeJS.Timeout;
+    
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      container.scrollLeft += e.deltaY;
+      
+      // Smoother scrolling with reduced delta sensitivity
+      const scrollAmount = e.deltaY * 0.8;
+      container.scrollLeft += scrollAmount;
+      setScrollPosition(container.scrollLeft);
+      
+      // Clear existing timeout
+      clearTimeout(scrollTimeout);
+      
+      // Set new timeout to snap after scrolling stops (reduced delay)
+      scrollTimeout = setTimeout(() => {
+        snapToClosestPoint();
+      }, 100); // Wait 100ms after scrolling stops
+    };
+    
+    const handleScroll = () => {
+      setScrollPosition(container.scrollLeft);
+    };
+
+    const snapToClosestPoint = () => {
+      const centerX = container.scrollLeft + startPadding;
+      let closestDistance = Infinity;
+      let closestPosition = centerX;
+      
+      // Find the closest publication position
+      sortedPublications.forEach((pub) => {
+        const pubPosition = positionMap.get(pub.id);
+        if (pubPosition !== undefined) {
+          const distance = Math.abs(centerX - pubPosition);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestPosition = pubPosition;
+          }
+        }
+      });
+      
+      // Only snap if we're not already very close (reduces unnecessary micro-adjustments)
+      const targetScrollLeft = closestPosition - startPadding;
+      const currentDistance = Math.abs(container.scrollLeft - targetScrollLeft);
+      
+      if (currentDistance > 5) { // Only snap if more than 5px away
+        container.scrollTo({
+          left: targetScrollLeft,
+          behavior: 'smooth'
+        });
+      }
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleWheel);
-  }, [lastDotPosition, startPadding]);
+    container.addEventListener("scroll", handleScroll);
+    
+    // Set initial scroll position
+    setScrollPosition(container.scrollLeft);
+    
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [lastDotPosition, startPadding, sortedPublications, positionMap]);
 
   if (!publications || publications.length === 0) {
     return (
@@ -95,11 +162,66 @@ export default function Timeline({ publications }: TimelineProps) {
       ref={containerRef}
       className="w-full h-full overflow-x-auto overflow-y-hidden py-12 scrollbar-hide bg-gray-800 rounded-lg border border-gray-700 relative"
       style={{ 
-        minHeight: '400px',
+        minHeight: '500px',
         backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
         backgroundSize: '20px 20px'
       }}
     >
+      {/* Abstract Carousel - positioned above timeline */}
+      <div className="absolute top-1/2 -translate-y-60 left-0 right-0 h-48 overflow-visible z-30">
+        {sortedPublications.map((pub) => {
+          // Only render cards for publications with abstracts and not prescription markers
+          if (!pub.abstract || pub.isPrescriptionMarker) {
+            return null;
+          }
+          
+          const pubPosition = positionMap.get(pub.id) || 0;
+          const centerX = scrollPosition + startPadding;
+          const distance = Math.abs(centerX - pubPosition);
+          const scale = Math.max(0.7, 1 - (distance / 400) * 0.3);
+          const opacity = Math.max(0.5, 1 - (distance / 400) * 0.5);
+          const isCentered = distance < 100;
+          
+          return (
+            <div
+              key={`abstract-${pub.id}`}
+              className="absolute bottom-0 -translate-x-1/2 transition-all duration-500"
+              style={{
+                left: `${pubPosition}px`,
+                transform: `scale(${scale})`,
+                opacity: opacity,
+                width: isCentered ? '320px' : '280px',
+                height: isCentered ? '280px' : '120px',
+                zIndex: isCentered ? 50 : 10
+              }}
+            >
+              <div 
+                className={`h-full p-4 rounded-lg shadow-lg border transition-all duration-500 flex flex-col ${
+                  isCentered 
+                    ? 'bg-indigo-900/95 border-indigo-500 shadow-indigo-900/50 cursor-pointer hover:bg-indigo-800/95' 
+                    : 'bg-gray-800/90 border-gray-600'
+                }`}
+                onClick={() => isCentered && setSelectedPublication(pub)}
+              >
+                <h3 className={`font-semibold mb-3 transition-all duration-300 ${
+                  isCentered 
+                    ? 'text-indigo-200 text-sm' 
+                    : 'text-gray-300 text-xs truncate'
+                }`}>
+                  {pub.title}
+                </h3>
+                <p className={`text-xs leading-relaxed transition-all duration-300 flex-1 overflow-hidden ${
+                  isCentered 
+                    ? 'text-gray-200' 
+                    : 'text-gray-400 line-clamp-2'
+                }`}>
+                  {pub.abstract ? decodeHtmlEntities(pub.abstract) : 'Abstract not available'}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <div
         className="relative h-full flex items-center"
         style={{ width: `${totalScrollableWidth}px` }}
@@ -168,6 +290,51 @@ export default function Timeline({ publications }: TimelineProps) {
           </div>
         ))}
       </div>
+
+      {/* Abstract Modal */}
+      {selectedPublication && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPublication(null)}
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{ overflow: 'hidden' }}
+        >
+          <div 
+            className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-700 flex justify-between items-start">
+              <h2 className="text-xl font-semibold text-indigo-200 leading-tight pr-4">
+                {selectedPublication.title}
+              </h2>
+              <button
+                onClick={() => setSelectedPublication(null)}
+                className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div 
+              className="p-6 overflow-y-auto max-h-[60vh] scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-purple-500 hover:scrollbar-thumb-pink-500"
+              onWheel={(e) => e.stopPropagation()}
+            >
+              <p className="text-gray-200 leading-relaxed text-base">
+                {selectedPublication.abstract ? decodeHtmlEntities(selectedPublication.abstract) : 'Abstract not available'}
+              </p>
+            </div>
+            <div className="p-4 border-t border-gray-700 bg-gray-800/50 text-center">
+              <p className="text-sm text-gray-400">
+                Published: {selectedPublication.date}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

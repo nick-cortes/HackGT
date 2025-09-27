@@ -41,7 +41,7 @@ async function fetchPubMedArticles(drugName: string, publishedAfter: Date, limit
     
     console.log(`Found ${articleIds.length} PubMed articles`);
     
-    // Step 2: Fetch article details
+    // Step 2: Fetch article details (summary for basic info)
     const detailsUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${articleIds.join(',')}&retmode=json`;
     
     const detailsResponse = await fetch(detailsUrl);
@@ -50,16 +50,40 @@ async function fetchPubMedArticles(drugName: string, publishedAfter: Date, limit
     }
     
     const detailsData = await detailsResponse.json();
+    
+    // Step 3: Fetch full abstracts using efetch
+    const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${articleIds.join(',')}&retmode=xml`;
+    
+    const fetchResponse = await fetch(fetchUrl);
+    if (!fetchResponse.ok) {
+      throw new Error(`PubMed efetch failed: ${fetchResponse.status}`);
+    }
+    
+    const xmlText = await fetchResponse.text();
     const articles = [];
     
     for (const id of articleIds) {
       const article = detailsData.result?.[id];
       if (article) {
+        // Extract abstract from XML
+        let abstract = '';
+        const abstractMatch = xmlText.match(new RegExp(`<PMID.*?>${id}</PMID>.*?<Abstract>(.*?)</Abstract>`, 's'));
+        if (abstractMatch) {
+          // Clean up XML tags from abstract
+          abstract = abstractMatch[1]
+            .replace(/<AbstractText.*?>/g, '')
+            .replace(/<\/AbstractText>/g, ' ')
+            .replace(/<.*?>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+        
         articles.push({
           title: (article.title as string) || 'Unknown Title',
           url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
           publishedDate: article.pubdate ? new Date(article.pubdate as string) : new Date(),
           pmid: id,
+          abstract: abstract || 'Abstract not available'
         });
       }
     }
@@ -179,6 +203,7 @@ export async function POST(request: NextRequest) {
                   publishedDate: article.publishedDate,
                   summary: '', // Empty summary for now
                   drugID: drug.id,
+                  abstract: article.abstract
                 },
               });
               savedCount++;
