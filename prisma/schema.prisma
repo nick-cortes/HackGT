@@ -1,0 +1,42 @@
+generator client {
+    provider = "prisma-client-js"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Patient {
+    id            String         @id @default(cuid())
+    name          String
+    prescriptions Prescription[]
+}
+
+model Drug {
+    id            String         @id @default(cuid())
+    name          String
+    publications  Publication[]
+    prescriptions Prescription[]
+}
+
+model Prescription {
+    id        String   @id @default(cuid())
+    startDate DateTime
+    patientID String
+    drugID    String
+
+    patient Patient @relation(fields: [patientID], references: [id], onDelete: Cascade)
+    drug    Drug    @relation(fields: [drugID], references: [id], onDelete: Cascade)
+}
+
+model Publication {
+    id            String   @id @default(cuid())
+    title         String
+    url           String
+    publishedDate DateTime
+    drugID        String
+
+    drug Drug @relation(fields: [drugID], references: [id], onDelete: Cascade)
+}
