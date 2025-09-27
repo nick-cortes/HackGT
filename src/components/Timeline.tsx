@@ -392,6 +392,17 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
                 }`}>
                   {pub.title ? decodeHtmlEntities(pub.title) : 'Title not available'}
                 </p>
+                {isCentered && (
+                  <div className="mt-3 flex items-center justify-between border-t border-indigo-400/30 pt-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-indigo-200 font-medium">Click to analyze</span>
+                    </div>
+                    <svg className="w-4 h-4 text-indigo-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                )}
                 </div>
             </div>
           );
