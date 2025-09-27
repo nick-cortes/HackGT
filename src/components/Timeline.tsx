@@ -187,10 +187,14 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
         container.style.overflow = 'auto';
       }
       
-      // Restore saved scroll position
+      // Restore saved scroll position after a brief delay to ensure other effects have run
       if (savedScrollPosition.current !== null && container) {
-        container.scrollLeft = savedScrollPosition.current;
-        savedScrollPosition.current = null;
+        setTimeout(() => {
+          if (container && savedScrollPosition.current !== null) {
+            container.scrollLeft = savedScrollPosition.current;
+            savedScrollPosition.current = null;
+          }
+        }, 0);
       }
       
       // Remove global event listeners
@@ -221,6 +225,10 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
       // Set the initial scroll to center the last dot. Because of our new width
       // calculation, this is also the maximum scroll position.
       container.scrollLeft = lastDotPosition - startPadding;
+    } else {
+      // If we have a saved position, restore it immediately
+      container.scrollLeft = savedScrollPosition.current;
+      savedScrollPosition.current = null;
     } 
     
     let scrollTimeout: NodeJS.Timeout;
