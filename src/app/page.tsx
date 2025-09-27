@@ -17,10 +17,10 @@ export default async function Home() {
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-indigo-400/60 rounded-full animate-pulse"></div>
           <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-purple-400/80 rounded-full animate-bounce"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-3 h-3 bg-pink-400/40 rounded-full animate-ping"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-3 h-3 bg-pink-400/40 rounded-full animate-pulse"></div>
           <div className="absolute top-1/2 right-1/4 w-1.5 h-1.5 bg-indigo-300/70 rounded-full animate-pulse"></div>
           <div className="absolute bottom-1/3 right-1/2 w-2 h-2 bg-purple-300/50 rounded-full animate-bounce"></div>
-          <div className="absolute top-3/4 left-1/2 w-1 h-1 bg-pink-300/60 rounded-full animate-ping"></div>
+          <div className="absolute top-3/4 left-11/20 w-1 h-1 bg-pink-300/60 rounded-full animate-pulse"></div>
         </div>
         
         {/* Animated Geometric Shapes */}
