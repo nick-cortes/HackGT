@@ -31,18 +31,10 @@ export default function Timeline({ publications }: TimelineProps) {
     }
   }, []);
 
-  if (!publications || publications.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
-        <p className="text-gray-500">No publication data available.</p>
-      </div>
-    );
-  }
-  
   const sortedPublications = useMemo(() => 
-    [...publications].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    ), [publications]);
+    publications && publications.length > 0 
+      ? [...publications].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      : [], [publications]);
 
   const positionMap = useMemo(() => {
     const map = new Map<string | number, number>();
@@ -89,6 +81,14 @@ export default function Timeline({ publications }: TimelineProps) {
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
   }, [lastDotPosition, startPadding]);
+
+  if (!publications || publications.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-48 bg-gray-800 rounded-lg border border-gray-700">
+        <p className="text-gray-400">No publication data available.</p>
+      </div>
+    );
+  }
 
   return (
     <div
