@@ -84,8 +84,8 @@ export default function Timeline({ publications }: TimelineProps) {
 
   if (!publications || publications.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 bg-gray-800 rounded-lg border border-gray-700">
-        <p className="text-gray-400">No publication data available.</p>
+      <div className="flex items-center justify-center h-64 bg-gray-800 rounded-lg border border-gray-700">
+        <p className="text-gray-400 text-lg">No publication data available.</p>
       </div>
     );
   }
@@ -93,7 +93,12 @@ export default function Timeline({ publications }: TimelineProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-x-auto overflow-y-hidden py-8 scrollbar-hide bg-gray-800 rounded-lg border border-gray-700"
+      className="w-full h-full overflow-x-auto overflow-y-hidden py-12 scrollbar-hide bg-gray-800 rounded-lg border border-gray-700 relative"
+      style={{ 
+        minHeight: '400px',
+        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
+        backgroundSize: '20px 20px'
+      }}
     >
       <div
         className="relative h-full flex items-center"
@@ -101,8 +106,8 @@ export default function Timeline({ publications }: TimelineProps) {
       >
         {/* --- The rest of your JSX remains exactly the same --- */}
         <div 
-          className="absolute top-1/2 h-1 -translate-y-1/2 
-                     bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-10"
+          className="absolute top-1/2 h-2 -translate-y-1/2 
+                     bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-10 rounded-full"
           style={{ 
             left: `${gradientStartPosition}px`,
             width: `${timelineEndPosition - gradientStartPosition}px` 
@@ -113,7 +118,7 @@ export default function Timeline({ publications }: TimelineProps) {
           className="absolute top-1/2 -translate-y-1/2 z-10"
           style={{ left: `${timelineEndPosition}px` }}
         >
-          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="16" height="24" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="arrowGradient" x1="0" y1="10" x2="12" y2="10" gradientUnits="userSpaceOnUse">
                 <stop stopColor="#EC4899"/>
@@ -135,22 +140,22 @@ export default function Timeline({ publications }: TimelineProps) {
             onClick={pub.isPrescriptionMarker ? undefined : () => window.open(pub.pdfUrl, "_blank")}
           >
             <div
-              className={`w-4 h-4 rounded-full mb-1 -translate-y-1/2 border-2 transition-all duration-300 ease-in-out ${
+              className={`w-6 h-6 rounded-full mb-2 -translate-y-1/2 border-3 transition-all duration-300 ease-in-out ${
                 pub.isPrescriptionMarker
                   ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.7)] group-hover:scale-125 group-hover:border-purple-300 group-hover:shadow-[0_0_12px_rgba(192,132,252,0.9)]'
                   : 'bg-white border-purple-500 shadow-[0_0_8px_rgba(147,51,234,0.7)] group-hover:scale-150 group-hover:border-pink-400 group-hover:shadow-[0_0_12px_rgba(244,114,182,0.9)]'
               }`}
             />
-            <span className="text-xs text-gray-500 whitespace-nowrap">
+            <span className="text-sm text-gray-400 whitespace-nowrap font-medium">
               {new Date(pub.date).toLocaleDateString()}
             </span>
-            <span className={`text-sm mt-1 whitespace-nowrap ${
+            <span className={`text-base mt-2 whitespace-nowrap ${
               pub.isPrescriptionMarker ? 'text-indigo-300 font-semibold' : 'text-gray-300'
             }`}>
-              {pub.title.startsWith("Start of") && pub.title}
+              {pub.title.startsWith("Started") && pub.title}
             </span>
             <div 
-              className={`absolute top-full mt-3 w-64 p-3 text-white rounded-lg shadow-xl border z-30
+              className={`absolute top-full mt-4 w-72 p-4 text-white rounded-lg shadow-xl border z-30
                          opacity-0 scale-95 invisible group-hover:visible group-hover:opacity-100 group-hover:scale-100
                          transition-all duration-300 ease-in-out pointer-events-none ${
                 pub.isPrescriptionMarker 
@@ -158,7 +163,7 @@ export default function Timeline({ publications }: TimelineProps) {
                   : 'bg-gray-800 border-gray-700'
               }`}
             >
-              <p className="text-xs text-center text-gray-300">{pub.summary}</p>
+              <p className="text-sm text-center text-gray-300 leading-relaxed">{pub.summary}</p>
             </div>
           </div>
         ))}
