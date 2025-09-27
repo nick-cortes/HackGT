@@ -422,7 +422,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="flex-1">
-                <Timeline publications={filteredPublications} />
+                <Timeline publications={filteredPublications} patientId={selectedPatientId} />
               </div>
             )}
           </div>

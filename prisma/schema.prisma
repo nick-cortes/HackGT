@@ -11,6 +11,10 @@ datasource db {
 model Patient {
     id                 String               @id @default(cuid())
     name               String
+    dateOfBirth        DateTime?
+    sex                String?
+    height             Float?
+    weight             Float?
     prescriptions      Prescription[]
     generatedSummaries GeneratedSummaries[]
 }
