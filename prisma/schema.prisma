@@ -9,9 +9,10 @@ datasource db {
 }
 
 model Patient {
-    id            String         @id @default(cuid())
-    name          String
-    prescriptions Prescription[]
+    id                 String               @id @default(cuid())
+    name               String
+    prescriptions      Prescription[]
+    generatedSummaries GeneratedSummaries[]
 }
 
 model Drug {
@@ -40,5 +41,18 @@ model Publication {
     drugID        String
     abstract      String
 
-    drug Drug @relation(fields: [drugID], references: [id], onDelete: Cascade)
+    drug               Drug                 @relation(fields: [drugID], references: [id], onDelete: Cascade)
+    generatedSummaries GeneratedSummaries[]
+}
+
+model GeneratedSummaries {
+    id               String @id @default(cuid())
+    impactScore      Int
+    summary          String
+    relevanceSummary String
+    publicationID    String
+    patientID        String
+
+    publication Publication @relation(fields: [publicationID], references: [id], onDelete: Cascade)
+    patient     Patient     @relation(fields: [patientID], references: [id], onDelete: Cascade)
 }
