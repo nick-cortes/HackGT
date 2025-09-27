@@ -84,6 +84,7 @@ export default function Dashboard() {
             headers: {
               'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ patientId: selectedPatientId, drugId: selectedDrugId }),
           });
           
           if (updateResponse.ok) {
