@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Inter } from "next/font/google";
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 // Make sure to import the Timeline and its types/data
 import Timeline, { Publication } from '@/components/Timeline';
 
@@ -45,6 +46,8 @@ export default function Dashboard() {
   const [timelinePublications, setTimelinePublications] = useState<Publication[]>([]);
   const [publicationsLoading, setPublicationsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [impactScores, setImpactScores] = useState<Map<string, number>>(new Map()); // For impact score display
+  const [minImpactScore, setMinImpactScore] = useState<number>(0); // Filter by minimum impact score
 
   // Fetch real patients from API
   useEffect(() => {
@@ -158,6 +161,54 @@ export default function Dashboard() {
         // Combine publications and prescription markers
         const allTimelineData = [...timelineData, ...prescriptionMarkers];
         setTimelinePublications(allTimelineData);
+
+        // STEP 4: Precompute impact scores for all publications (background processing)
+        console.log('Step 4: Precomputing impact scores for all publications...');
+        try {
+          const publicationIds = timelineData.map(pub => pub.id);
+          if (publicationIds.length > 0) {
+            console.log('Requesting impact scores for publications:', publicationIds);
+            const batchResponse = await fetch('/api/generate-batch-summaries', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                publicationIds: publicationIds,
+                patientId: selectedPatientId,
+              }),
+            });
+
+            if (batchResponse.ok) {
+              const summaries = await batchResponse.json();
+              console.log('Received summaries:', summaries);
+              const scoreMap = new Map<string, number>();
+              summaries.forEach((summary: { publicationID: string; impactScore: number }) => {
+                scoreMap.set(summary.publicationID, summary.impactScore);
+              });
+              setImpactScores(scoreMap); // Store for impact score display
+              console.log('Impact scores precomputed and stored:', scoreMap);
+              
+              // Update publications with impact scores
+              setTimelinePublications(prevPublications => 
+                prevPublications.map(pub => ({
+                  ...pub,
+                  impactScore: scoreMap.get(pub.id.toString()) || 0
+                }))
+              );
+              
+              console.log('Total impact scores computed:', scoreMap.size);
+            } else {
+              const errorText = await batchResponse.text();
+              console.error('Failed to precompute impact scores:', batchResponse.status, errorText);
+            }
+          } else {
+            console.log('No publications to process for impact scores');
+          }
+        } catch (error) {
+          console.error('Error precomputing impact scores:', error);
+          // Continue without impact scores - this is background processing
+        }
       } catch (err) {
         console.error('Error fetching publications:', err);
         setTimelinePublications([]);
@@ -172,14 +223,20 @@ export default function Dashboard() {
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
   const availableDrugs = selectedPatient?.prescriptions.map(p => p.drug) || [];
 
-  // Filter publications by selected drug if one is selected
-  const filteredPublications = selectedDrugId 
-    ? timelinePublications.filter(pub => {
-        const selectedPatient = patients.find(p => p.id === selectedPatientId);
-        const selectedDrug = selectedPatient?.prescriptions.find(p => p.drug.id === selectedDrugId)?.drug;
-        return pub.summary.includes(selectedDrug?.name || '');
-      })
-    : timelinePublications;
+  // Filter publications by selected drug and impact score
+  const filteredPublications = timelinePublications.filter(pub => {
+    // Filter by drug if one is selected
+    const drugFilter = !selectedDrugId || (() => {
+      const selectedPatient = patients.find(p => p.id === selectedPatientId);
+      const selectedDrug = selectedPatient?.prescriptions.find(p => p.drug.id === selectedDrugId)?.drug;
+      return pub.summary.includes(selectedDrug?.name || '');
+    })();
+    
+    // Filter by impact score (only apply to publications, not prescription markers)
+    const impactFilter = pub.isPrescriptionMarker || (pub.impactScore !== undefined && pub.impactScore >= minImpactScore);
+    
+    return drugFilter && impactFilter;
+  });
 
   if (loading) {
     return (
@@ -244,6 +301,51 @@ export default function Dashboard() {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Impact Score Filter */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Filter by Impact Score
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <div className="flex-1 relative">
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="1"
+                    value={minImpactScore}
+                    onChange={(e) => setMinImpactScore(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                    style={{
+                      background: `linear-gradient(to right, 
+                        #6366f1 0%, 
+                        #a855f7 ${(minImpactScore / 5) * 50}%, 
+                        #ec4899 ${(minImpactScore / 5) * 100}%, 
+                        #374151 ${(minImpactScore / 5) * 100}%, 
+                        #374151 100%)`
+                    }}
+                  />
+                </div>
+                <span className="text-sm text-gray-400 min-w-[60px]">
+                  ≥ {minImpactScore}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>All Studies</span>
+                <span>High Impact Only</span>
+              </div>
+              {minImpactScore > 0 && (
+                <button
+                  onClick={() => setMinImpactScore(0)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Clear Filter
                 </button>
               )}
             </div>
@@ -412,6 +514,24 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
+              
+              {/* Impact Score Filter Status */}
+              {minImpactScore > 0 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mt-4">
+                  <p className="text-gray-200 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span>Filtering by impact score <span className="text-yellow-300 font-semibold">≥ {minImpactScore}</span> stars</span>
+                    <button
+                      onClick={() => setMinImpactScore(0)}
+                      className="ml-2 text-yellow-400 hover:text-yellow-300 text-sm underline"
+                    >
+                      Clear
+                    </button>
+                  </p>
+                </div>
+              )}
             </div>
             
             {/* Timeline */}
@@ -429,10 +549,93 @@ export default function Dashboard() {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-200 mb-2">Welcome to Patient Dashboard</h3>
-              <p className="text-gray-400">Select a patient from the sidebar to view their research timeline</p>
+          <div className="flex-1 relative overflow-hidden h-screen">
+            {/* Blurred Background Timeline */}
+            <div className="absolute inset-0 bg-gray-800 rounded-lg border border-gray-700 h-full">
+              {/* Animated Grid Pattern with Blur */}
+              <div 
+                className="absolute inset-0 opacity-10 blur-sm"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
+                  backgroundSize: '20px 20px',
+                  animation: 'gridMove 20s linear infinite'
+                }}
+              />
+              
+              {/* Blurred Timeline Line */}
+              <div className="absolute top-1/2 left-0 right-0 h-3 -translate-y-1/2 blur-sm">
+                <div 
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full"
+                  style={{
+                    animation: 'timelinePulse 3s ease-in-out infinite'
+                  }}
+                />
+              </div>
+              
+              {/* Blurred Animated Dots */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center blur-sm"
+                  style={{
+                    left: `${20 + (i * 20)}%`,
+                    animation: `dotFloat ${2 + i * 0.5}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.3}s`
+                  }}
+                >
+                  <div 
+                    className={`w-8 h-8 rounded-full border-3 transition-all duration-500 ${
+                      i % 2 === 0 
+                        ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.8)]' 
+                        : 'bg-white border-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.8)]'
+                    }`}
+                  />
+                </div>
+              ))}
+              
+              {/* Floating Blurred Particles */}
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={`particle-${i}`}
+                  className="absolute w-3 h-3 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full opacity-40 blur-sm"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animation: `particleFloat ${3 + Math.random() * 2}s ease-in-out infinite`,
+                    animationDelay: `${Math.random() * 2}s`
+                  }}
+                />
+              ))}
+              
+              {/* Additional Blurred Decorative Elements */}
+              <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute top-1/3 right-1/3 w-20 h-20 bg-gradient-to-r from-pink-500/20 to-indigo-500/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }} />
+            </div>
+            
+            {/* Welcome Content */}
+            <div className="relative z-10 flex items-center justify-center h-full">
+              <div className="text-center max-w-2xl mx-auto px-8">
+                <div className="mb-8">
+                  <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full mb-8 animate-pulse shadow-2xl">
+                    <Image 
+                      src="/clock.svg" 
+                      alt="ChronologiCare Logo" 
+                      width={48}
+                      height={48}
+                      className="text-white filter brightness-0 invert"
+                    />
+                  </div>
+                  <h3 className="text-5xl font-bold text-white mb-6 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    ChronologiCare
+                  </h3>
+                  <p className="text-2xl text-gray-300 mb-4 font-light">Patient Research Timeline</p>
+                  <p className="text-lg text-gray-400 leading-relaxed max-w-lg mx-auto">
+                    Select a patient from the sidebar to view their personalized research timeline, 
+                    track medication impacts, and discover relevant medical publications.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

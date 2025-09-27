@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         console.log(`Searching for ${drug.name} publications after ${searchFromDate}`);
         
         // Fetch from PubMed
-        const articles = await fetchPubMedArticles(drug.name, searchFromDate, 5);
+        const articles = await fetchPubMedArticles(drug.name, searchFromDate, 7);
         
         // Save new publications to database
         let savedCount = 0;

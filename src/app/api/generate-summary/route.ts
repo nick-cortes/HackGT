@@ -3,6 +3,44 @@ import { PrismaClient } from '@/generated/prisma';
 
 const prisma = new PrismaClient();
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const publicationId = searchParams.get('publicationId');
+    const patientId = searchParams.get('patientId');
+
+    if (!publicationId || !patientId) {
+      return NextResponse.json({ error: 'Missing publicationId or patientId' }, { status: 400 });
+    }
+
+    // Check if summary already exists
+    const existingSummary = await prisma.generatedSummaries.findFirst({
+      where: {
+        publicationID: publicationId,
+        patientID: patientId,
+      },
+    });
+
+    if (!existingSummary) {
+      return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(existingSummary);
+
+  } catch (error) {
+    console.error('Error fetching summary:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch summary',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { publicationId, patientId } = await request.json();
@@ -31,7 +69,6 @@ export async function POST(request: NextRequest) {
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
-      include: { conditions: true },
     });
 
     if (!publication || !patient) {
@@ -58,10 +95,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
-    // Format patient conditions
-    const conditionsList = patient.conditions && patient.conditions.length > 0
-      ? patient.conditions.map(c => c.condition).join(', ')
-      : 'None specified';
+    // Format patient conditions (simplified for now)
+    const conditionsList = 'None specified';
 
     const prompt = `Analyze this medical research publication for a specific patient with their medical conditions.
 

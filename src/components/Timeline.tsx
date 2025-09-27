@@ -21,6 +21,7 @@ export type Publication = {
     id: string;
     name: string;
   };
+  impactScore?: number;
 };
 
 interface TimelineProps {
@@ -39,6 +40,7 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const [selectedPublication, setSelectedPublication] = useState<Publication | null>(null);
   const [centeredPublication, setCenteredPublication] = useState<Publication | null>(null);
+  const savedScrollPosition = useRef<number | null>(null);
   const [generatedSummary, setGeneratedSummary] = useState<{
     impactScore: number;
     summary: string;
@@ -57,6 +59,17 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
     setGeneratedSummary(null);
 
     try {
+      // First try to get existing summary
+      const existingResponse = await fetch(`/api/generate-summary?publicationId=${pub.id}&patientId=${patientId}`);
+      
+      if (existingResponse.ok) {
+        const existingSummary = await existingResponse.json();
+        setGeneratedSummary(existingSummary);
+        setLoadingSummary(false);
+        return;
+      }
+
+      // If no existing summary, generate new one
       const response = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: {
@@ -141,6 +154,11 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
     const container = containerRef.current;
 
     if (selectedPublication) {
+      // Save current scroll position before opening modal
+      if (container) {
+        savedScrollPosition.current = container.scrollLeft;
+      }
+      
       // Disable body scroll when modal is open
       document.body.style.overflow = 'hidden';
       // Hide scrollbar on timeline container
@@ -168,6 +186,13 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
       if (container) {
         container.style.overflow = 'auto';
       }
+      
+      // Restore saved scroll position
+      if (savedScrollPosition.current !== null && container) {
+        container.scrollLeft = savedScrollPosition.current;
+        savedScrollPosition.current = null;
+      }
+      
       // Remove global event listeners
       document.removeEventListener('wheel', preventScroll);
       document.removeEventListener('touchmove', preventScroll);
@@ -191,9 +216,12 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
     // Don't set up scroll handlers if modal is open
     if (selectedPublication) return;
 
-    // Set the initial scroll to center the last dot. Because of our new width
-    // calculation, this is also the maximum scroll position.
-    container.scrollLeft = lastDotPosition - startPadding; 
+    // Only set initial scroll if we haven't restored a saved position
+    if (savedScrollPosition.current === null) {
+      // Set the initial scroll to center the last dot. Because of our new width
+      // calculation, this is also the maximum scroll position.
+      container.scrollLeft = lastDotPosition - startPadding;
+    } 
     
     let scrollTimeout: NodeJS.Timeout;
     
@@ -421,6 +449,27 @@ export default function Timeline({ publications, patientId }: TimelineProps) {
               <span className="text-sm text-gray-400 whitespace-nowrap font-medium">
                 {new Date(pub.date).toLocaleDateString()}
               </span>
+              
+              {/* Impact Score Stars - only show for publications, not prescription markers */}
+              {!isPrescription && pub.impactScore !== undefined && pub.impactScore > 0 && (
+                <div className="flex items-center space-x-1 mt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <svg
+                      key={star}
+                      className={`w-3 h-3 ${
+                        star <= pub.impactScore!
+                          ? 'text-yellow-400'
+                          : 'text-gray-600'
+                      }`}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+              )}
+              
               <span className={`text-base mt-2 whitespace-nowrap ${
                 isPrescription ? 'text-indigo-300 font-semibold' : 'text-gray-300'
               }`}>
