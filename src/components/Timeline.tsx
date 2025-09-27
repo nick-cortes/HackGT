@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState, useLayoutEffect } from "react";
 
 export type Publication = {
   id: number | string;
@@ -15,12 +15,21 @@ interface TimelineProps {
   publications: Publication[];
 }
 
-const PADDING_PX = 75; 
-const MIN_SPACING_PX = 250;
-const END_PADDING_PX = 500;
+// --- CONFIGURATION CONSTANTS ---
+const MIN_SPACING_PX = 250;   // The horizontal space between each event dot
+const ARROW_GAP_PX = 200;      // The space between the last dot and the arrow
 
 export default function Timeline({ publications }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  
+  const [startPadding, setStartPadding] = useState(300); 
+  
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      const centerScreen = containerRef.current.clientWidth / 2;
+      setStartPadding(centerScreen);
+    }
+  }, []);
 
   if (!publications || publications.length === 0) {
     return (
@@ -35,29 +44,43 @@ export default function Timeline({ publications }: TimelineProps) {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     ), [publications]);
 
-  const timelineContentWidth = (sortedPublications.length - 1) * MIN_SPACING_PX + (PADDING_PX * 2);
-  const totalScrollableWidth = timelineContentWidth + END_PADDING_PX;
-
   const positionMap = useMemo(() => {
     const map = new Map<string | number, number>();
     sortedPublications.forEach((pub, index) => {
-      const position = PADDING_PX + (index * MIN_SPACING_PX);
+      const position = startPadding + (index * MIN_SPACING_PX);
       map.set(pub.id, position);
     });
     return map;
-  }, [sortedPublications]);
+  }, [sortedPublications, startPadding]);
+
+  const lastDotPosition = useMemo(() => {
+    if (sortedPublications.length === 0) return startPadding;
+    const lastPubId = sortedPublications[sortedPublications.length - 1].id;
+    return positionMap.get(lastPubId) || startPadding;
+  }, [sortedPublications, positionMap, startPadding]);
+
+  const timelineEndPosition = lastDotPosition + ARROW_GAP_PX;
 
   const prescriptionMarker = sortedPublications.find(p => p.isPrescriptionMarker);
   
   const gradientStartPosition = prescriptionMarker
-    ? positionMap.get(prescriptionMarker.id) || timelineContentWidth 
-    : timelineContentWidth;
+    ? positionMap.get(prescriptionMarker.id) || timelineEndPosition 
+    : timelineEndPosition;
+
+  // --- FIXED: Calculate the exact width needed to prevent over-scrolling. ---
+  // The total width is the position of the last dot plus exactly half the screen width.
+  // This ensures that when scrolled all the way to the end, the last dot aligns
+  // perfectly with the center of the screen, leaving no extra space to scroll into.
+  const totalScrollableWidth = lastDotPosition + startPadding;
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    container.scrollLeft = container.scrollWidth;
 
+    // Set the initial scroll to center the last dot. Because of our new width
+    // calculation, this is also the maximum scroll position.
+    container.scrollLeft = lastDotPosition - startPadding; 
+    
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       container.scrollLeft += e.deltaY;
@@ -65,7 +88,7 @@ export default function Timeline({ publications }: TimelineProps) {
 
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
-  }, [publications]);
+  }, [lastDotPosition, startPadding]);
 
   return (
     <div
@@ -76,18 +99,19 @@ export default function Timeline({ publications }: TimelineProps) {
         className="relative h-full flex items-center"
         style={{ width: `${totalScrollableWidth}px` }}
       >
+        {/* --- The rest of your JSX remains exactly the same --- */}
         <div 
           className="absolute top-1/2 h-1 -translate-y-1/2 
                      bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-10"
           style={{ 
             left: `${gradientStartPosition}px`,
-            width: `${timelineContentWidth - gradientStartPosition}px` 
+            width: `${timelineEndPosition - gradientStartPosition}px` 
           }}
         />
 
         <div
           className="absolute top-1/2 -translate-y-1/2 z-10"
-          style={{ left: `${timelineContentWidth}px` }}
+          style={{ left: `${timelineEndPosition}px` }}
         >
           <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -110,7 +134,6 @@ export default function Timeline({ publications }: TimelineProps) {
             style={{ left: `${positionMap.get(pub.id)}px`, top: "50%" }}
             onClick={pub.isPrescriptionMarker ? undefined : () => window.open(pub.pdfUrl, "_blank")}
           >
-            {/* --- THIS IS THE MODIFIED SECTION FOR THE DOT --- */}
             <div
               className={`w-4 h-4 rounded-full mb-1 -translate-y-1/2 border-2 transition-all duration-300 ease-in-out ${
                 pub.isPrescriptionMarker
@@ -118,16 +141,14 @@ export default function Timeline({ publications }: TimelineProps) {
                   : 'bg-white border-purple-500 shadow-[0_0_8px_rgba(147,51,234,0.7)] group-hover:scale-150 group-hover:border-pink-400 group-hover:shadow-[0_0_12px_rgba(244,114,182,0.9)]'
               }`}
             />
-            {/* --- THIS IS THE MODIFIED SECTION FOR THE TEXT --- */}
             <span className={`text-sm mt-1 whitespace-nowrap ${
-              pub.isPrescriptionMarker ? 'text-gray-300font-semibold' : 'text-gray-300'
+              pub.isPrescriptionMarker ? 'text-indigo-300 font-semibold' : 'text-gray-300'
             }`}>
               {pub.title}
             </span>
             <span className="text-xs text-gray-500 whitespace-nowrap">
               {new Date(pub.date).toLocaleDateString()}
             </span>
-            {/* --- THIS IS THE MODIFIED SECTION FOR THE TOOLTIP --- */}
             <div 
               className={`absolute top-full mt-3 w-64 p-3 text-white rounded-lg shadow-xl border z-30
                          opacity-0 scale-95 invisible group-hover:visible group-hover:opacity-100 group-hover:scale-100
