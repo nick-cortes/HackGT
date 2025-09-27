@@ -76,7 +76,29 @@ export default function Dashboard() {
         const selectedPatient = patients.find(p => p.id === selectedPatientId);
         if (!selectedPatient) return;
 
-        // Get all unique drug IDs from patient's prescriptions
+        // STEP 1: Update database with publications from intern
+        console.log('Step 1: Updating database with publications from intern...');
+        try {
+          const updateResponse = await fetch('/api/publications/fetch-pubmed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (updateResponse.ok) {
+            const updateResult = await updateResponse.json();
+            console.log('Database updated with publications:', updateResult);
+          } else {
+            console.warn('Failed to update database with publications:', await updateResponse.text());
+          }
+        } catch (error) {
+          console.error('Error updating database with publications:', error);
+          // Continue with existing data even if update fails
+        }
+
+        // STEP 2: Search database for publications by drug
+        console.log('Step 2: Searching database for publications by drug...');
         const drugIds = [...new Set(selectedPatient.prescriptions.map(p => p.drug.id))];
         
         // Fetch publications for each drug
@@ -89,7 +111,8 @@ export default function Dashboard() {
           }
         }
 
-        // Convert API publications to Timeline format, filtering by prescription start date
+        // STEP 3: Filter publications by date
+        console.log('Step 3: Filtering publications by prescription start date...');
         const timelineData: Publication[] = allPublications
           .filter(pub => {
             // Find the prescription for this drug
