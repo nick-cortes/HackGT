@@ -322,7 +322,7 @@ export default function Timeline({ publications }: TimelineProps) {
               {isCentered && !isPrescription && (
                 <div className="absolute top-full mt-4 w-64 p-3 text-white rounded-lg shadow-xl border z-30 bg-gray-800 border-gray-700">
                   <h3 className="text-sm font-semibold text-purple-300 text-center">
-                    Publication about {pub.title}
+                    {pub.title}
                   </h3>
                 </div>
               )}
