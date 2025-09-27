@@ -1,7 +1,12 @@
-export default function Home() {
+import { redirect } from "next/navigation";
+
+export default async function Home() {
   return (
-    <div>
-      Hello World
-    </div>
+    <form action={async () => {
+      "use server";
+      redirect("/dashboard");
+    }}>
+      <button type="submit">Go to Dashboard</button>
+    </form>
   );
 }
