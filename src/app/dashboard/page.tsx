@@ -93,7 +93,10 @@ export default function Dashboard() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ patientId: selectedPatientId, drugId: selectedDrugId }),
+            body: JSON.stringify({ 
+              patientId: selectedPatientId, 
+              ...(selectedDrugId && { drugId: selectedDrugId })
+            }),
           });
           
           if (updateResponse.ok) {
@@ -227,7 +230,7 @@ export default function Dashboard() {
     const drugFilter = !selectedDrugId || (() => {
       const selectedPatient = patients.find(p => p.id === selectedPatientId);
       const selectedDrug = selectedPatient?.prescriptions.find(p => p.drug.id === selectedDrugId)?.drug;
-      return pub.summary.includes(selectedDrug?.name || '');
+      return selectedDrug ? pub.summary.includes(selectedDrug.name) : true;
     })();
     
     // Filter by impact score (only apply to publications, not prescription markers)
