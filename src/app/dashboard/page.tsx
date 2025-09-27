@@ -60,9 +60,7 @@ export default function Dashboard() {
         }
         const data = await response.json();
         setPatients(data);
-        if (data.length > 0) {
-          setSelectedPatientId(data[0].id);
-        }
+        // Don't automatically select a patient - let user choose
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch patients');
         console.error('Error fetching patients:', err);
