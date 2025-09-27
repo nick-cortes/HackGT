@@ -127,7 +127,7 @@ export default function Dashboard() {
           })
           .map(pub => ({
             id: pub.id,
-            title: pub.title,
+            title: pub.drug.name,
             date: pub.publishedDate.split('T')[0], // Convert ISO date to YYYY-MM-DD
             pdfUrl: pub.url,
             summary: `Publication about ${pub.drug.name}`
@@ -139,7 +139,7 @@ export default function Dashboard() {
           title: `Start of ${prescription.drug.name}`,
           date: prescription.startDate,
           pdfUrl: '#',
-          summary: `Patient started taking ${prescription.drug.name} on ${prescription.startDate}`,
+          summary: `Patient started taking ${prescription.drug.name} on ${prescription.startDate.split('T')[0]}`,
           isPrescriptionMarker: true
         }));
 
@@ -171,10 +171,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading patients...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="mt-4 text-gray-300">Loading patients...</p>
         </div>
       </div>
     );
@@ -182,12 +182,12 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error: {error}</p>
+          <p className="text-red-400 mb-4">Error: {error}</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 transition-all duration-300"
           >
             Retry
           </button>
@@ -197,103 +197,126 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <div className="h-screen bg-gray-900 flex overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 bg-white shadow-lg flex flex-col">
-        {/* Sidebar Header */}
-        <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">Patient Dashboard</h1>
+      <div className="w-80 bg-gray-800 shadow-lg border-r border-gray-700">
+        <div className="p-6 border-b border-gray-700">
+          <h1 className="text-2xl font-bold text-white">Patient Dashboard</h1>
         </div>
         
-        {/* Patient List */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          {patients.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No patients found</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {patients.map((patient) => (
-                <div key={patient.id} className="space-y-2">
-                  {/* Patient Button */}
-                  <button
-                    onClick={() => {
-                      setSelectedPatientId(patient.id);
-                      setSelectedDrugId(''); // Reset drug selection
-                    }}
-                    className={`w-full p-3 text-left rounded-lg border-2 transition-all ${
-                      selectedPatientId === patient.id
-                        ? 'border-blue-500 bg-blue-50 text-blue-900'
-                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="font-medium">{patient.name}</div>
-                    <div className="text-sm text-gray-500">
-                      {patient.prescriptions.length} prescription{patient.prescriptions.length !== 1 ? 's' : ''}
-                    </div>
-                  </button>
+        <div className="p-6">
+          {/* Patient List */}
+          <div>
+            {patients.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No patients found</p>
+                <p className="text-gray-500 text-sm mt-1">Add some patients to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {patients.map((patient) => (
+                  <div key={patient.id}>
+                    {/* Patient Button */}
+                    <button
+                      onClick={() => {
+                        setSelectedPatientId(patient.id === selectedPatientId ? '' : patient.id);
+                        setSelectedDrugId(''); // Reset drug selection when patient changes
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-md transition-all duration-300 ${
+                        selectedPatientId === patient.id
+                          ? 'bg-indigo-600 text-white border border-indigo-500'
+                          : 'hover:bg-gray-700 text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{patient.name}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs ${
+                            selectedPatientId === patient.id ? 'text-indigo-200' : 'text-gray-400'
+                          }`}>
+                            {patient.prescriptions.length} Rx
+                          </span>
+                          <svg
+                            className={`h-4 w-4 transition-transform ${
+                              selectedPatientId === patient.id ? 'rotate-90' : ''
+                            }`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </button>
 
-                  {/* Drug Buttons (only show if this patient is selected) */}
-                  {selectedPatientId === patient.id && patient.prescriptions.length > 0 && (
-                    <div className="ml-4 space-y-1">
-                      <button
-                        onClick={() => setSelectedDrugId('')}
-                        className={`w-full p-2 text-left text-sm rounded border transition-all ${
-                          selectedDrugId === ''
-                            ? 'border-green-500 bg-green-50 text-green-900'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        All Drugs ({patient.prescriptions.length})
-                      </button>
-                      {patient.prescriptions.map((prescription) => (
+                    {/* Drug Options - Show when patient is selected */}
+                    {selectedPatientId === patient.id && patient.prescriptions.length > 0 && (
+                      <div className="ml-4 mt-2 space-y-1">
+                        {/* All Drugs Option */}
                         <button
-                          key={prescription.id}
-                          onClick={() => setSelectedDrugId(prescription.drug.id)}
-                          className={`w-full p-2 text-left text-sm rounded border transition-all ${
-                            selectedDrugId === prescription.drug.id
-                              ? 'border-green-500 bg-green-50 text-green-900'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          onClick={() => setSelectedDrugId('')}
+                          className={`w-full text-left px-3 py-2 text-sm rounded-md transition-all duration-300 ${
+                            selectedDrugId === ''
+                              ? 'bg-purple-600 text-white border border-purple-500'
+                              : 'hover:bg-gray-700 text-gray-300'
                           }`}
                         >
-                          {prescription.drug.name}
+                          All Drugs ({patient.prescriptions.length})
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                        
+                        {/* Individual Drug Options */}
+                        {availableDrugs.map((drug) => (
+                          <button
+                            key={drug.id}
+                            onClick={() => setSelectedDrugId(drug.id)}
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-all duration-300 ${
+                              selectedDrugId === drug.id
+                                ? 'bg-purple-600 text-white border border-purple-500'
+                                : 'hover:bg-gray-700 text-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{drug.name}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8 min-w-0 overflow-y-auto">
+      <div className="flex-1 p-8 min-w-0 overflow-y-auto bg-gray-900">
         {selectedPatient ? (
           <div className="flex flex-col h-full">
             <div className="mb-6">
-              <h2 className="text-3xl font-bold text-gray-900">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Timeline for {selectedPatient.name}
               </h2>
               {selectedDrugId && (
-                <p className="text-gray-600 mt-2">
-                  Showing publications for: {availableDrugs.find(d => d.id === selectedDrugId)?.name}
+                <p className="text-gray-300 mt-2">
+                  Showing publications for: <span className="text-purple-400 font-medium">{availableDrugs.find(d => d.id === selectedDrugId)?.name}</span>
                 </p>
               )}
               {!selectedDrugId && (
-                <p className="text-gray-600 mt-2">
-                  Showing publications for all drugs ({availableDrugs.length} drugs)
+                <p className="text-gray-300 mt-2">
+                  Showing publications for all drugs (<span className="text-indigo-400 font-medium">{availableDrugs.length} drugs</span>)
                 </p>
               )}
             </div>
             
             {/* Timeline */}
             {publicationsLoading ? (
-              <div className="flex flex-1 items-center justify-center bg-gray-100 rounded-lg">
+              <div className="flex flex-1 items-center justify-center bg-gray-800 rounded-lg border border-gray-700">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Loading publications...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                  <p className="mt-2 text-gray-300">Loading publications...</p>
                 </div>
               </div>
             ) : (
@@ -305,7 +328,8 @@ export default function Dashboard() {
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="text-gray-500 text-lg">Select a patient to view their timeline</p>
+              <p className="text-gray-400 text-lg">Select a patient to view their timeline</p>
+              <p className="text-gray-500 text-sm mt-2">Choose a patient from the sidebar to get started</p>
             </div>
           </div>
         )}

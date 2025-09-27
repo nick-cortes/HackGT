@@ -93,7 +93,7 @@ export default function Timeline({ publications }: TimelineProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-x-auto overflow-y-hidden py-8 scrollbar-hide bg-gray-900 rounded-lg"
+      className="w-full h-full overflow-x-auto overflow-y-hidden py-8 scrollbar-hide bg-gray-800 rounded-lg border border-gray-700"
     >
       <div
         className="relative h-full flex items-center"
@@ -141,13 +141,13 @@ export default function Timeline({ publications }: TimelineProps) {
                   : 'bg-white border-purple-500 shadow-[0_0_8px_rgba(147,51,234,0.7)] group-hover:scale-150 group-hover:border-pink-400 group-hover:shadow-[0_0_12px_rgba(244,114,182,0.9)]'
               }`}
             />
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {new Date(pub.date).toLocaleDateString()}
+            </span>
             <span className={`text-sm mt-1 whitespace-nowrap ${
               pub.isPrescriptionMarker ? 'text-indigo-300 font-semibold' : 'text-gray-300'
             }`}>
-              {pub.title}
-            </span>
-            <span className="text-xs text-gray-500 whitespace-nowrap">
-              {new Date(pub.date).toLocaleDateString()}
+              {pub.title.startsWith("Start of") && pub.title}
             </span>
             <div 
               className={`absolute top-full mt-3 w-64 p-3 text-white rounded-lg shadow-xl border z-30
