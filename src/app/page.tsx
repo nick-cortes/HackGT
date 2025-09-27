@@ -10,7 +10,6 @@ export default async function Home() {
       }}>
         <button type="submit">Go to Dashboard</button>
       </form>
-      <Timeline />
     </div>
   );
 }
