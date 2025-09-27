@@ -17,6 +17,7 @@ model Patient {
     weight             Float?
     prescriptions      Prescription[]
     generatedSummaries GeneratedSummaries[]
+    conditions         Conditions[]
 }
 
 model Drug {
@@ -59,4 +60,12 @@ model GeneratedSummaries {
 
     publication Publication @relation(fields: [publicationID], references: [id], onDelete: Cascade)
     patient     Patient     @relation(fields: [patientID], references: [id], onDelete: Cascade)
+}
+
+model Conditions {
+    id        String @id @default(cuid())
+    condition String
+    patientID String
+
+    patient Patient @relation(fields: [patientID], references: [id], onDelete: Cascade)
 }

@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
+      include: { conditions: true },
     });
 
     if (!publication || !patient) {
@@ -57,7 +58,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
-    const prompt = `Analyze this medical research publication for a specific patient.
+    // Format patient conditions
+    const conditionsList = patient.conditions && patient.conditions.length > 0
+      ? patient.conditions.map(c => c.condition).join(', ')
+      : 'None specified';
+
+    const prompt = `Analyze this medical research publication for a specific patient with their medical conditions.
 
     PUBLICATION:
     Title: ${publication.title}
@@ -71,10 +77,16 @@ export async function POST(request: NextRequest) {
     Sex: ${patientContext.sex || 'Not specified'}
     Height: ${patientContext.height ? `${patientContext.height} cm` : 'Not specified'}
     Weight: ${patientContext.weight ? `${patientContext.weight} kg` : 'Not specified'}
+    Medical Conditions: ${conditionsList}
+
+    Consider how this publication's findings relate to the patient's specific medical conditions, demographics, and the drug being studied. Analyze contraindications, drug interactions, efficacy considerations, and safety concerns specific to this patient's profile.
+    A publication is almost guaranteed to discuss a drug that treats one of the patient's conditions, because of the way our tool works, so that alone is not enough to make it a relevant publication. Rather, a relevant publication might discuss a new side effect of the drug recently observed, for example.
+    Try to limit the length of your relevance response to somewhere near the length of the summary you create.
+    Use plaintext formatting, nothing like markdown, don't try to do any special formatting to text and don't do any HTML encoding.
 
     Provide your analysis in this exact JSON format:
     {
-    "impactScore": 3,
+    "impactScore": 1-5 inclusive,
     "summary": "Brief summary here",
     "relevanceSummary": "Patient relevance analysis here"
     }
