@@ -24,7 +24,7 @@ interface ApiPublication {
   publishedDate: string;
   drugID: string;
   drug: {
-    id: string;
+    id:string;
     name: string;
   };
 }
@@ -62,38 +62,6 @@ export default function Dashboard() {
 
     fetchPatients();
   }, []);
-
-  // Fetch publications when patient is selected
-  useEffect(() => {
-    const fetchPublications = async () => {
-      if (selectedPatientId) {
-        try {
-          console.log('Fetching publications for patient:', selectedPatientId);
-          const response = await fetch('/api/publications/fetch-pubmed', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              patientId: selectedPatientId,
-            }),
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.totalNewPublications > 0) {
-              console.log(`Found ${result.totalNewPublications} new publications!`);
-              // Optionally show a notification or refresh data
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching publications:', error);
-        }
-      }
-    };
-
-    fetchPublications();
-  }, [selectedPatientId]);
 
   // Fetch publications when patient or drug selection changes
   useEffect(() => {
@@ -279,7 +247,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <div className="flex-1 p-8 min-w-0 overflow-y-auto">
         {selectedPatient ? (
-          <div>
+          <div className="flex flex-col h-full">
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-900">
                 Timeline for {selectedPatient.name}
@@ -298,14 +266,14 @@ export default function Dashboard() {
             
             {/* Timeline */}
             {publicationsLoading ? (
-              <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
+              <div className="flex flex-1 items-center justify-center bg-gray-100 rounded-lg">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Loading publications...</p>
                 </div>
               </div>
             ) : (
-              <div className="h-96">
+              <div className="flex-1">
                 <Timeline publications={filteredPublications} />
               </div>
             )}
